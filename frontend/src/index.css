@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #f7f1dc;
+  color: #111111;
+}
+
+.dark body {
+  background: #161616;
+  color: #f8f4df;
+}
+
+@layer components {
+  .brutal-panel {
+    @apply border-2 border-black bg-white shadow-brutal dark:border-[#f8f4df] dark:bg-[#202020] dark:shadow-brutal-dark;
+  }
+
+  .brutal-input {
+    @apply w-full border-2 border-black bg-white px-3 py-2 font-mono text-sm outline-none transition focus:translate-x-[-2px] focus:translate-y-[-2px] focus:shadow-brutal dark:border-[#f8f4df] dark:bg-[#141414] dark:text-[#f8f4df] dark:focus:shadow-brutal-dark;
+  }
+
+  .brutal-button {
+    @apply inline-flex items-center justify-center gap-2 border-2 border-black bg-[#ffdf38] px-4 py-2 font-mono text-sm font-black uppercase tracking-normal text-black shadow-brutal transition hover:translate-x-[-2px] hover:translate-y-[-2px] disabled:translate-x-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#f8f4df] dark:bg-[#7cf7c7] dark:shadow-brutal-dark;
+  }
+
+  .brutal-button-secondary {
+    @apply inline-flex items-center justify-center gap-2 border-2 border-black bg-white px-4 py-2 font-mono text-sm font-black uppercase tracking-normal text-black shadow-brutal transition hover:translate-x-[-2px] hover:translate-y-[-2px] dark:border-[#f8f4df] dark:bg-[#202020] dark:text-[#f8f4df] dark:shadow-brutal-dark;
+  }
+
+  .brutal-badge {
+    @apply inline-flex items-center gap-1 border-2 border-black bg-[#b4e7ff] px-2 py-1 font-mono text-xs font-black uppercase text-black dark:border-[#f8f4df] dark:bg-[#3b2df7] dark:text-white;
+  }
+}
