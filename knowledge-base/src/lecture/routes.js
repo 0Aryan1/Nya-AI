@@ -13,6 +13,7 @@ const GenerateSchema = z.object({
   duration: z.number().int().min(5).max(180),
   learning_objective: z.string().min(10),
   topic_filter: z.string().optional(),   // matches `topic` column in knowledge_chunks
+  jurisdiction: z.string().optional(),   // e.g. "India", "US Federal" — informs authority framing in the prompt
 });
 
 // ─── POST /api/lectures/generate ─────────────────────────────────────────────
