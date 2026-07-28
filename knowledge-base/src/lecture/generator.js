@@ -112,6 +112,8 @@ export async function generateLecture(request) {
       topK: 8,
       topic: request.topic_filter ?? null,  // optional: filter by ingested topic tag
       threshold: 0.4,
+      rerank: true,   // over-fetch candidates, then cross-encoder rerank down to topK
+      fetchK: 24,
     }
   );
 

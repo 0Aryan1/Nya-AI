@@ -1,6 +1,9 @@
 import { pool } from "./db.js";
 import { embedder } from "./embeddings.js";
+import { rerankChunks } from "./rerank.js";
 import "dotenv/config";
+
+const RERANK_FETCH_MULTIPLIER = 4;
 
 /**
  * @param {string} question
@@ -9,13 +12,19 @@ import "dotenv/config";
  * @param {string} opts.topic      - filter by topic (optional)
  * @param {string} opts.sourceId   - filter by specific PDF (optional)
  * @param {number} opts.threshold  - min similarity 0–1 (default 0.5)
+ * @param {boolean} opts.rerank    - cross-encoder rerank the candidates (default false)
+ * @param {number} opts.fetchK     - candidate pool size fetched before reranking
+ *                                   (default topK * 4, only used when rerank=true)
  */
 export async function retrieveChunks(question, {
   topK = 5,
   topic = null,
   sourceId = null,
   threshold = 0.5,
+  rerank = false,
+  fetchK = null,
 } = {}) {
+  const candidateLimit = rerank ? (fetchK ?? topK * RERANK_FETCH_MULTIPLIER) : topK;
   const queryVector = await embedder.embedQuery(question);
   const vectorStr = `[${queryVector.join(",")}]`;
 
@@ -35,7 +44,7 @@ export async function retrieveChunks(question, {
     params.push(sourceId);
   }
 
-  params.push(topK);
+  params.push(candidateLimit);
 
   const sql = `
     SELECT
@@ -54,22 +63,32 @@ export async function retrieveChunks(question, {
   `;
 
   const client = await pool.connect();
+  let rows;
   try {
-    const { rows } = await client.query(sql, params);
-    return rows;
+    ({ rows } = await client.query(sql, params));
   } finally {
     client.release();
   }
+
+  if (!rerank || rows.length === 0) return rows;
+
+  return rerankChunks(question, rows, topK);
 }
 
 // ─── CLI test ─────────────────────────────────────────────────────────────── 
 
-// node src/query.js "what is gradient descent"
-const question = process.argv.slice(2).join(" ");
+// node src/query.js "what is gradient descent"        -> vector search only
+// node src/query.js "what is gradient descent" --rerank -> vector search + cross-encoder rerank
+const args = process.argv.slice(2);
+const useRerank = args.includes("--rerank");
+const question = args.filter((a) => a !== "--rerank").join(" ");
 if (question) {
-  const chunks = await retrieveChunks(question, { topK: 1 });
+  const chunks = await retrieveChunks(question, { topK: 3, rerank: useRerank });
   chunks.forEach((c, i) => {
-    console.log(`\n[${i + 1}] ${c.source_title} | similarity: ${(c.similarity * 100).toFixed(1)}%`);
+    const scoreLabel = useRerank
+      ? `rerank: ${(c.rerank_score * 100).toFixed(1)}% | vector: ${(c.vector_similarity * 100).toFixed(1)}%`
+      : `similarity: ${(c.similarity * 100).toFixed(1)}%`;
+    console.log(`\n[${i + 1}] ${c.source_title} | ${scoreLabel}`);
     console.log(c.content.slice(0, 300) + "...");
   });
   await pool.end();
