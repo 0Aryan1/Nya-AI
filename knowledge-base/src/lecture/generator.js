@@ -1,8 +1,9 @@
 import { pool } from "../db.js";
 import { invokeLLMWithRetry } from "../llm.js";
 import { retrieveChunks } from "../query.js";
-import { buildLectureSystemPrompt, buildLectureUserPrompt } from "./prompts.js";
-import { SystemMessage, HumanMessage } from "@langchain/core/messages";
+import { buildLectureSystemPrompt, buildLectureUserPrompt, buildFewShotExample } from "./prompts.js";
+import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
+
 
 // ─── Step 1: Save the request ────────────────────────────────────────────────
 
@@ -19,10 +20,14 @@ async function insertLectureRequest(client, request) {
 // ─── Step 2: Call GLM and parse JSON safely ──────────────────────────────────
 
 async function generateLectureContent(request, chunks) {
+  const fewShot = buildFewShotExample();
+
   let response;
   try {
     response = await invokeLLMWithRetry([
       new SystemMessage(buildLectureSystemPrompt()),
+      new HumanMessage(fewShot.userPrompt),
+      new AIMessage(fewShot.assistantResponse),
       new HumanMessage(buildLectureUserPrompt(request, chunks)),
     ]);
   } catch (error) {
@@ -31,7 +36,6 @@ async function generateLectureContent(request, chunks) {
       { cause: error }
     );
   }
-
   const raw = response.content.trim();
 
   // Strip markdown code fences if GLM wraps in ```json ... ```
