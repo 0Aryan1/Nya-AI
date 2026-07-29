@@ -1,5 +1,5 @@
 import { pool } from "../db.js";
-import { llm } from "../llm.js";
+import { invokeLLMWithRetry } from "../llm.js";
 import { retrieveChunks } from "../query.js";
 import { buildLectureSystemPrompt, buildLectureUserPrompt } from "./prompts.js";
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
@@ -19,10 +19,18 @@ async function insertLectureRequest(client, request) {
 // ─── Step 2: Call GLM and parse JSON safely ──────────────────────────────────
 
 async function generateLectureContent(request, chunks) {
-  const response = await llm.invoke([
-    new SystemMessage(buildLectureSystemPrompt()),
-    new HumanMessage(buildLectureUserPrompt(request, chunks)),
-  ]);
+  let response;
+  try {
+    response = await invokeLLMWithRetry([
+      new SystemMessage(buildLectureSystemPrompt()),
+      new HumanMessage(buildLectureUserPrompt(request, chunks)),
+    ]);
+  } catch (error) {
+    throw new Error(
+      `Lecture generation failed: could not get a response from GLM. ${error.message}`,
+      { cause: error }
+    );
+  }
 
   const raw = response.content.trim();
 
